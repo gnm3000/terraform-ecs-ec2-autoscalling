@@ -1,5 +1,5 @@
 
-# terraform project with ECS and EC2 autoscalling
+# terraform project with ECS and EC2 autoscaling
 
 
 Alternative to terraform is possible to use AWS CDK Python 
