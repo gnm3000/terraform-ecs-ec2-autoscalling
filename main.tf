@@ -251,7 +251,7 @@ resource "aws_ecs_service" "hello_world_service" {
 # I want to scale the DesiredCount for my service. At max only 2.
 
 resource "aws_appautoscaling_target" "ecs_autoscale_target" {
-  max_capacity       = 1
+  max_capacity       = 3
   min_capacity       = 1
   resource_id        = "service/my-cluster/hello-world-service"
   scalable_dimension = "ecs:service:DesiredCount"
@@ -356,6 +356,8 @@ resource "aws_autoscaling_group" "ecs_autoscaling_group" {
     value               = "ECS Instance"
     propagate_at_launch = true
   }
+
+  
 }
 
 # now we define finally the capacity provider for out autoscalling group.
