@@ -330,7 +330,8 @@ resource "aws_launch_configuration" "ecs_launch_configuration2" {
 
 # here define the autoscaling group for our ECS service.
 # I want to launch max 3 taks.
-#protect_from_scale_in allow to ECS scale in.
+#protect_from_scale_in allow to ECS scale in. => seted to true
+#"To enable managed termination protection for a capacity provider, the Auto Scaling group must have instance protection from scale in enabled."
 
 resource "aws_autoscaling_group" "ecs_autoscaling_group" {
   launch_configuration      = aws_launch_configuration.ecs_launch_configuration2.name
@@ -342,7 +343,7 @@ resource "aws_autoscaling_group" "ecs_autoscaling_group" {
   force_delete              = true
   target_group_arns         = [aws_lb_target_group.ecs_tg.arn]
   vpc_zone_identifier       = ["subnet-058e23ab7532d95ae", "subnet-0c967e1d6fb86bd76"]
-  protect_from_scale_in     = false
+  protect_from_scale_in     = true
   tag {
     key                 = "Name"
     value               = "ECS Instance"
