@@ -3,6 +3,10 @@
 
 Look this PR related with the version using awsvpc network mode [PR Open awsvpc support](https://github.com/gnm3000/terraform-ecs-ec2-autoscalling/pull/1)
 
+Blog Post about this project: [https://germanmontenegro.com/2023/11/13/ecs-using-ec2-instances-with-autoscaling/](https://germanmontenegro.com/2023/11/13/ecs-using-ec2-instances-with-autoscaling/)
+
+
+
 
 Alternative to terraform is possible to use AWS CDK Python 
 
