@@ -79,7 +79,7 @@ resource "aws_cloudwatch_log_group" "ecs_log_group" {
 # define the task to run on EC2, with the execution w/ cpu and memory
 resource "aws_ecs_task_definition" "hello_world" {
   family                   = "hello_world"
-  network_mode             = "bridge"
+  network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_instance_role.arn
   cpu                      = "256"
@@ -95,7 +95,7 @@ resource "aws_ecs_task_definition" "hello_world" {
     essential = true,
     portMappings = [{
       containerPort = 8000, # this is the port that my docker python application is using,
-      hostPort      = 0     # this is because we want to run many containers on the same host
+      hostPort      = 8000     # this is because we want to run many containers on the same host
     }],
 
     logConfiguration = {
@@ -189,6 +189,7 @@ resource "aws_lb_target_group" "ecs_tg" {
   port     = 8000
   protocol = "HTTP"
   vpc_id   = "vpc-07bda9d98a3314bc1"
+  target_type = "ip" 
 
   health_check {
     healthy_threshold   = 2
@@ -222,6 +223,11 @@ resource "aws_ecs_service" "hello_world_service" {
   #launch_type     = "EC2"
   desired_count        = 1
   force_new_deployment = true
+  network_configuration {
+    subnets = ["subnet-058e23ab7532d95ae", "subnet-0c967e1d6fb86bd76"]
+    security_groups = [aws_security_group.ecs_tasks_sg.id]
+    #assign_public_ip = true # Set to false if you do not want to assign public IPs to your tasks
+  }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.ecs_tg.arn
@@ -245,7 +251,7 @@ resource "aws_ecs_service" "hello_world_service" {
 # I want to scale the DesiredCount for my service. At max only 2.
 
 resource "aws_appautoscaling_target" "ecs_autoscale_target" {
-  max_capacity       = 2
+  max_capacity       = 3
   min_capacity       = 1
   resource_id        = "service/my-cluster/hello-world-service"
   scalable_dimension = "ecs:service:DesiredCount"
@@ -265,7 +271,7 @@ resource "aws_appautoscaling_policy" "ecs_autoscale_policy" {
   service_namespace  = aws_appautoscaling_target.ecs_autoscale_target.service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value       = 2.0
+    target_value       = 70
     scale_in_cooldown  = 60
     scale_out_cooldown = 60
 
@@ -324,7 +330,8 @@ resource "aws_launch_configuration" "ecs_launch_configuration2" {
   user_data = <<-EOF
                 #!/bin/bash
                 echo "ECS_CLUSTER=${aws_ecs_cluster.my_cluster.name}" >> /etc/ecs/ecs.config
-                echo ECS_WARM_POOLS_CHECK=true" >> /etc/ecs/ecs.config
+                # prevent access to metadata
+                echo "ECS_AWSVPC_BLOCK_IMDS=true" >> /etc/ecs/ecs.config
               EOF
 }
 
@@ -336,19 +343,21 @@ resource "aws_launch_configuration" "ecs_launch_configuration2" {
 resource "aws_autoscaling_group" "ecs_autoscaling_group" {
   launch_configuration      = aws_launch_configuration.ecs_launch_configuration2.name
   min_size                  = 1
-  max_size                  = 3
+  max_size                  = 1
   desired_capacity          = 1
   health_check_grace_period = 30
   health_check_type         = "EC2"
   force_delete              = true
-  target_group_arns         = [aws_lb_target_group.ecs_tg.arn]
+  #target_group_arns         = [aws_lb_target_group.ecs_tg.arn]
   vpc_zone_identifier       = ["subnet-058e23ab7532d95ae", "subnet-0c967e1d6fb86bd76"]
-  protect_from_scale_in     = true
+  protect_from_scale_in     = false
   tag {
     key                 = "Name"
     value               = "ECS Instance"
     propagate_at_launch = true
   }
+
+  
 }
 
 # now we define finally the capacity provider for out autoscalling group.
@@ -358,13 +367,13 @@ resource "aws_ecs_capacity_provider" "ecs_capacity_provider" {
 
   auto_scaling_group_provider {
     auto_scaling_group_arn         = aws_autoscaling_group.ecs_autoscaling_group.arn
-    managed_termination_protection = "ENABLED"
+    managed_termination_protection = "DISABLED"
 
     managed_scaling {
       maximum_scaling_step_size = 3
       minimum_scaling_step_size = 1
       status                    = "ENABLED"
-      target_capacity           = 80
+      target_capacity           = 100
     }
   }
 }
